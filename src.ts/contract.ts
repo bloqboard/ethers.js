@@ -1,31 +1,22 @@
 'use strict';
 
-import { Zero } from './constants';
-
-import * as errors from './errors';
-
-import { defaultAbiCoder, formatSignature, parseSignature } from './utils/abi-coder';
-import { getAddress, getContractAddress } from './utils/address';
-import { BigNumber, bigNumberify } from './utils/bignumber';
-import { hexDataLength, hexDataSlice, hexlify, isArrayish, isHexString } from './utils/bytes';
-import { Indexed, Interface } from './utils/interface';
-import { defineReadOnly, deepCopy, shallowCopy } from './utils/properties';
-import { UnsignedTransaction } from './utils/transaction';
-
-
-///////////////////////////////
-// Imported Abstracts
-
-import { BlockTag, Provider } from './providers/abstract-provider';
-import { Signer } from './abstract-signer';
-
 ///////////////////////////////
 // Imported Types
 
-import { Arrayish } from './utils/bytes';
-import { EventDescription } from './utils/interface';
-import { ParamType } from './utils/abi-coder';
-import { Block, Listener, Log, TransactionReceipt, TransactionRequest, TransactionResponse } from './providers/abstract-provider';
+import {Zero} from './constants';
+
+import * as errors from './errors';
+
+import {defaultAbiCoder, formatSignature, ParamType, parseSignature} from './utils/abi-coder';
+import {getAddress, getContractAddress} from './utils/address';
+import {BigNumber, bigNumberify} from './utils/bignumber';
+import {Arrayish, hexDataLength, hexDataSlice, hexlify, isArrayish, isHexString} from './utils/bytes';
+import {EventDescription, Indexed, Interface} from './utils/interface';
+import {deepCopy, defineReadOnly, shallowCopy} from './utils/properties';
+import {UnsignedTransaction} from './utils/transaction';
+import {Block, BlockTag, Listener, Log, Provider, TransactionReceipt, TransactionRequest, TransactionResponse} from './providers/abstract-provider';
+import {Signer} from './abstract-signer';
+
 
 ///////////////////////////////
 // Exported Types
@@ -145,7 +136,7 @@ function resolveAddresses(provider: Provider, value: any, paramType: ParamType |
 
 type RunFunction = (...params: Array<any>) => Promise<any>;
 
-function runMethod(contract: Contract, functionName: string, estimateOnly: boolean): RunFunction {
+function runMethod(contract: Contract, functionName: string, estimateOnly: boolean, composeOnly: boolean): RunFunction {
     let method = contract.interface.functions[functionName];
     return function(...params): Promise<any> {
         let tx: any = {}
@@ -185,7 +176,7 @@ function runMethod(contract: Contract, functionName: string, estimateOnly: boole
             return contract.addressPromise;
         });
 
-        return resolveAddresses(contract.provider, params, method.inputs).then((params) => {
+        return resolveAddresses(contract.provider, params, method.inputs).then(async (params) => {
             tx.data = method.encode(params);
             if (method.type === 'call') {
 
@@ -259,6 +250,19 @@ function runMethod(contract: Contract, functionName: string, estimateOnly: boole
 
                 if (tx.gasLimit == null && method.gas != null) {
                     tx.gasLimit = bigNumberify(method.gas).add(21000);
+                }
+
+                // Only composing an unsigned transaction
+                if (composeOnly) {
+                    const _to = await tx.to;
+                    const _network = await contract.provider.getNetwork();
+                    return {
+                        to: _to,
+                        data: tx.data,
+                        value: tx.value && new BigNumber(tx.value).toHexString(),
+                        gasLimit: tx.gasLimit && new BigNumber(tx.gasLimit).toHexString(),
+                        chainId: _network.chainId,
+                    };
                 }
 
                 if (!contract.signer) {
@@ -346,6 +350,8 @@ export class Contract {
     readonly signer: Signer;
     readonly provider: Provider;
 
+    readonly composeOnly: boolean;
+
     readonly estimate: Bucket<(...params: Array<any>) => Promise<BigNumber>>;
     readonly functions: Bucket<ContractFunction>;
 
@@ -364,8 +370,10 @@ export class Contract {
     // Once this issue is resolved (there are open PR) we can do this nicer
     // by making addressOrName default to null for 2 operand calls. :)
 
-    constructor(addressOrName: string, contractInterface: Array<string | ParamType> | string | Interface, signerOrProvider: Signer | Provider) {
+    constructor(addressOrName: string, contractInterface: Array<string | ParamType> | string | Interface, signerOrProvider: Signer | Provider, composeOnly: boolean = false) {
         errors.checkNew(this, Contract);
+
+        defineReadOnly(this, 'composeOnly', composeOnly);
 
         // @TODO: Maybe still check the addressOrName looks like a valid address or name?
         //address = getAddress(address);
@@ -421,7 +429,7 @@ export class Contract {
         }
 
         Object.keys(this.interface.functions).forEach((name) => {
-            let run = runMethod(this, name, false);
+            let run = runMethod(this, name, false, this.composeOnly);
 
             if ((<any>this)[name] == null) {
                 defineReadOnly(this, name, run);
@@ -431,7 +439,7 @@ export class Contract {
 
             if (this.functions[name] == null) {
                 defineReadOnly(this.functions, name, run);
-                defineReadOnly(this.estimate, name, runMethod(this, name, true));
+                defineReadOnly(this.estimate, name, runMethod(this, name, true, false));
             }
         });
     }
