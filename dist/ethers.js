@@ -57,6 +57,41 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -73,8 +108,6 @@ var bignumber_1 = require("./utils/bignumber");
 var bytes_1 = require("./utils/bytes");
 var interface_1 = require("./utils/interface");
 var properties_1 = require("./utils/properties");
-///////////////////////////////
-// Imported Abstracts
 var abstract_provider_1 = require("./providers/abstract-provider");
 var abstract_signer_1 = require("./abstract-signer");
 ///////////////////////////////
@@ -151,9 +184,10 @@ function resolveAddresses(provider, value, paramType) {
     }
     return Promise.resolve(value);
 }
-function runMethod(contract, functionName, estimateOnly) {
+function runMethod(contract, functionName, estimateOnly, composeOnly) {
     var method = contract.interface.functions[functionName];
     return function () {
+        var _this = this;
         var params = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             params[_i] = arguments[_i];
@@ -186,112 +220,131 @@ function runMethod(contract, functionName, estimateOnly) {
         tx.to = contract._deployed(blockTag).then(function () {
             return contract.addressPromise;
         });
-        return resolveAddresses(contract.provider, params, method.inputs).then(function (params) {
-            tx.data = method.encode(params);
-            if (method.type === 'call') {
-                // Call (constant functions) always cost 0 ether
-                if (estimateOnly) {
-                    return Promise.resolve(constants_1.Zero);
-                }
-                if (!contract.provider) {
-                    errors.throwError('call (constant functions) require a provider or a signer with a provider', errors.UNSUPPORTED_OPERATION, { operation: 'call' });
-                }
-                // Check overrides make sense
-                ['gasLimit', 'gasPrice', 'value'].forEach(function (key) {
-                    if (tx[key] != null) {
-                        throw new Error('call cannot override ' + key);
-                    }
-                });
-                if (tx.from == null && contract.signer) {
-                    tx.from = contract.signer.getAddress();
-                }
-                return contract.provider.call(tx, blockTag).then(function (value) {
-                    if ((bytes_1.hexDataLength(value) % 32) === 4 && bytes_1.hexDataSlice(value, 0, 4) === '0x08c379a0') {
-                        var reason = abi_coder_1.defaultAbiCoder.decode(['string'], bytes_1.hexDataSlice(value, 4));
-                        errors.throwError('call revert exception', errors.CALL_EXCEPTION, {
-                            address: contract.address,
-                            args: params,
-                            method: method.signature,
-                            errorSignature: 'Error(string)',
-                            errorArgs: [reason],
-                            reason: reason,
-                            transaction: tx
+        return resolveAddresses(contract.provider, params, method.inputs).then(function (params) { return __awaiter(_this, void 0, void 0, function () {
+            var _to, _network;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        tx.data = method.encode(params);
+                        if (!(method.type === 'call')) return [3 /*break*/, 1];
+                        // Call (constant functions) always cost 0 ether
+                        if (estimateOnly) {
+                            return [2 /*return*/, Promise.resolve(constants_1.Zero)];
+                        }
+                        if (!contract.provider) {
+                            errors.throwError('call (constant functions) require a provider or a signer with a provider', errors.UNSUPPORTED_OPERATION, { operation: 'call' });
+                        }
+                        // Check overrides make sense
+                        ['gasLimit', 'gasPrice', 'value'].forEach(function (key) {
+                            if (tx[key] != null) {
+                                throw new Error('call cannot override ' + key);
+                            }
                         });
-                    }
-                    try {
-                        var result = method.decode(value);
-                        if (method.outputs.length === 1) {
-                            result = result[0];
+                        if (tx.from == null && contract.signer) {
+                            tx.from = contract.signer.getAddress();
                         }
-                        return result;
-                    }
-                    catch (error) {
-                        if (value === '0x' && method.outputs.length > 0) {
-                            errors.throwError('call exception', errors.CALL_EXCEPTION, {
-                                address: contract.address,
-                                method: method.signature,
-                                args: params
-                            });
-                        }
-                        throw error;
-                    }
-                });
-            }
-            else if (method.type === 'transaction') {
-                // Only computing the transaction estimate
-                if (estimateOnly) {
-                    if (!contract.provider) {
-                        errors.throwError('estimate gas require a provider or a signer with a provider', errors.UNSUPPORTED_OPERATION, { operation: 'estimateGas' });
-                    }
-                    if (tx.from == null && contract.signer) {
-                        tx.from = contract.signer.getAddress();
-                    }
-                    return contract.provider.estimateGas(tx);
-                }
-                if (tx.gasLimit == null && method.gas != null) {
-                    tx.gasLimit = bignumber_1.bigNumberify(method.gas).add(21000);
-                }
-                if (!contract.signer) {
-                    errors.throwError('sending a transaction require a signer', errors.UNSUPPORTED_OPERATION, { operation: 'sendTransaction' });
-                }
-                // Make sure they aren't overriding something they shouldn't
-                if (tx.from != null) {
-                    errors.throwError('cannot override from in a transaction', errors.UNSUPPORTED_OPERATION, { operation: 'sendTransaction' });
-                }
-                return contract.signer.sendTransaction(tx).then(function (tx) {
-                    var wait = tx.wait.bind(tx);
-                    tx.wait = function (confirmations) {
-                        return wait(confirmations).then(function (receipt) {
-                            receipt.events = receipt.logs.map(function (log) {
-                                var event = properties_1.deepCopy(log);
-                                var parsed = contract.interface.parseLog(log);
-                                if (parsed) {
-                                    event.args = parsed.values;
-                                    event.decode = parsed.decode;
-                                    event.event = parsed.name;
-                                    event.eventSignature = parsed.signature;
+                        return [2 /*return*/, contract.provider.call(tx, blockTag).then(function (value) {
+                                if ((bytes_1.hexDataLength(value) % 32) === 4 && bytes_1.hexDataSlice(value, 0, 4) === '0x08c379a0') {
+                                    var reason = abi_coder_1.defaultAbiCoder.decode(['string'], bytes_1.hexDataSlice(value, 4));
+                                    errors.throwError('call revert exception', errors.CALL_EXCEPTION, {
+                                        address: contract.address,
+                                        args: params,
+                                        method: method.signature,
+                                        errorSignature: 'Error(string)',
+                                        errorArgs: [reason],
+                                        reason: reason,
+                                        transaction: tx
+                                    });
                                 }
-                                event.removeListener = function () { return contract.provider; };
-                                event.getBlock = function () {
-                                    return contract.provider.getBlock(receipt.blockHash);
+                                try {
+                                    var result = method.decode(value);
+                                    if (method.outputs.length === 1) {
+                                        result = result[0];
+                                    }
+                                    return result;
+                                }
+                                catch (error) {
+                                    if (value === '0x' && method.outputs.length > 0) {
+                                        errors.throwError('call exception', errors.CALL_EXCEPTION, {
+                                            address: contract.address,
+                                            method: method.signature,
+                                            args: params
+                                        });
+                                    }
+                                    throw error;
+                                }
+                            })];
+                    case 1:
+                        if (!(method.type === 'transaction')) return [3 /*break*/, 5];
+                        // Only computing the transaction estimate
+                        if (estimateOnly) {
+                            if (!contract.provider) {
+                                errors.throwError('estimate gas require a provider or a signer with a provider', errors.UNSUPPORTED_OPERATION, { operation: 'estimateGas' });
+                            }
+                            if (tx.from == null && contract.signer) {
+                                tx.from = contract.signer.getAddress();
+                            }
+                            return [2 /*return*/, contract.provider.estimateGas(tx)];
+                        }
+                        if (tx.gasLimit == null && method.gas != null) {
+                            tx.gasLimit = bignumber_1.bigNumberify(method.gas).add(21000);
+                        }
+                        if (!composeOnly) return [3 /*break*/, 4];
+                        return [4 /*yield*/, tx.to];
+                    case 2:
+                        _to = _a.sent();
+                        return [4 /*yield*/, contract.provider.getNetwork()];
+                    case 3:
+                        _network = _a.sent();
+                        return [2 /*return*/, {
+                                to: _to,
+                                data: tx.data,
+                                value: tx.value && new bignumber_1.BigNumber(tx.value).toHexString(),
+                                gasLimit: tx.gasLimit && new bignumber_1.BigNumber(tx.gasLimit).toHexString(),
+                                chainId: _network.chainId,
+                            }];
+                    case 4:
+                        if (!contract.signer) {
+                            errors.throwError('sending a transaction require a signer', errors.UNSUPPORTED_OPERATION, { operation: 'sendTransaction' });
+                        }
+                        // Make sure they aren't overriding something they shouldn't
+                        if (tx.from != null) {
+                            errors.throwError('cannot override from in a transaction', errors.UNSUPPORTED_OPERATION, { operation: 'sendTransaction' });
+                        }
+                        return [2 /*return*/, contract.signer.sendTransaction(tx).then(function (tx) {
+                                var wait = tx.wait.bind(tx);
+                                tx.wait = function (confirmations) {
+                                    return wait(confirmations).then(function (receipt) {
+                                        receipt.events = receipt.logs.map(function (log) {
+                                            var event = properties_1.deepCopy(log);
+                                            var parsed = contract.interface.parseLog(log);
+                                            if (parsed) {
+                                                event.args = parsed.values;
+                                                event.decode = parsed.decode;
+                                                event.event = parsed.name;
+                                                event.eventSignature = parsed.signature;
+                                            }
+                                            event.removeListener = function () { return contract.provider; };
+                                            event.getBlock = function () {
+                                                return contract.provider.getBlock(receipt.blockHash);
+                                            };
+                                            event.getTransaction = function () {
+                                                return contract.provider.getTransaction(receipt.transactionHash);
+                                            };
+                                            event.getTransactionReceipt = function () {
+                                                return Promise.resolve(receipt);
+                                            };
+                                            return event;
+                                        });
+                                        return receipt;
+                                    });
                                 };
-                                event.getTransaction = function () {
-                                    return contract.provider.getTransaction(receipt.transactionHash);
-                                };
-                                event.getTransactionReceipt = function () {
-                                    return Promise.resolve(receipt);
-                                };
-                                return event;
-                            });
-                            return receipt;
-                        });
-                    };
-                    return tx;
-                });
-            }
-            throw new Error('invalid type - ' + method.type);
-            return null;
-        });
+                                return tx;
+                            })];
+                    case 5: throw new Error('invalid type - ' + method.type);
+                }
+            });
+        }); });
     };
 }
 function getEventTag(filter) {
@@ -304,9 +357,11 @@ var Contract = /** @class */ (function () {
     // https://github.com/Microsoft/TypeScript/issues/5453
     // Once this issue is resolved (there are open PR) we can do this nicer
     // by making addressOrName default to null for 2 operand calls. :)
-    function Contract(addressOrName, contractInterface, signerOrProvider) {
+    function Contract(addressOrName, contractInterface, signerOrProvider, composeOnly) {
+        if (composeOnly === void 0) { composeOnly = false; }
         var _this = this;
         errors.checkNew(this, Contract);
+        properties_1.defineReadOnly(this, 'composeOnly', composeOnly);
         // @TODO: Maybe still check the addressOrName looks like a valid address or name?
         //address = getAddress(address);
         if (interface_1.Interface.isInterface(contractInterface)) {
@@ -364,7 +419,7 @@ var Contract = /** @class */ (function () {
             }
         }
         Object.keys(this.interface.functions).forEach(function (name) {
-            var run = runMethod(_this, name, false);
+            var run = runMethod(_this, name, false, _this.composeOnly);
             if (_this[name] == null) {
                 properties_1.defineReadOnly(_this, name, run);
             }
@@ -373,7 +428,7 @@ var Contract = /** @class */ (function () {
             }
             if (_this.functions[name] == null) {
                 properties_1.defineReadOnly(_this.functions, name, run);
-                properties_1.defineReadOnly(_this.estimate, name, runMethod(_this, name, true));
+                properties_1.defineReadOnly(_this.estimate, name, runMethod(_this, name, true, false));
             }
         });
     }

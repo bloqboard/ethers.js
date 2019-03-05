@@ -1,11 +1,10 @@
+import { ParamType } from './utils/abi-coder';
 import { BigNumber } from './utils/bignumber';
+import { Arrayish } from './utils/bytes';
 import { Indexed, Interface } from './utils/interface';
 import { UnsignedTransaction } from './utils/transaction';
-import { BlockTag, Provider } from './providers/abstract-provider';
+import { Block, BlockTag, Listener, Log, Provider, TransactionReceipt, TransactionRequest, TransactionResponse } from './providers/abstract-provider';
 import { Signer } from './abstract-signer';
-import { Arrayish } from './utils/bytes';
-import { ParamType } from './utils/abi-coder';
-import { Block, Listener, Log, TransactionReceipt, TransactionRequest, TransactionResponse } from './providers/abstract-provider';
 export declare type ContractFunction = (...params: Array<any>) => Promise<any>;
 export declare type EventFilter = {
     address?: string;
@@ -44,6 +43,7 @@ export declare class Contract {
     readonly interface: Interface;
     readonly signer: Signer;
     readonly provider: Provider;
+    readonly composeOnly: boolean;
     readonly estimate: Bucket<(...params: Array<any>) => Promise<BigNumber>>;
     readonly functions: Bucket<ContractFunction>;
     readonly filters: Bucket<(...params: Array<any>) => EventFilter>;
@@ -51,7 +51,7 @@ export declare class Contract {
     readonly addressPromise: Promise<string>;
     readonly deployTransaction: TransactionResponse;
     private _deployedPromise;
-    constructor(addressOrName: string, contractInterface: Array<string | ParamType> | string | Interface, signerOrProvider: Signer | Provider);
+    constructor(addressOrName: string, contractInterface: Array<string | ParamType> | string | Interface, signerOrProvider: Signer | Provider, composeOnly?: boolean);
     deployed(): Promise<Contract>;
     _deployed(blockTag?: BlockTag): Promise<Contract>;
     fallback(overrides?: TransactionRequest): Promise<TransactionResponse>;
